@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Movies Updates</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0d1117; color:#fff; margin:0; padding:20px; }
+    h1, h2 { margin:0 0 10px; }
+    header { display:flex; flex-direction:column; gap:12px; }
+    nav { display:flex; gap:10px; flex-wrap:wrap; margin-top:5px; }
+    nav button { background:#161b22; border:0; color:#aaa; padding:8px 14px; border-radius:6px; cursor:pointer; }
+    nav button.active, nav button:hover { background:#d63384; color:#fff; }
+    .search-box { display:flex; gap:8px; margin-top:10px; width:100%; max-width:400px; }
+    .search-box input { flex:1; padding:8px; border-radius:6px; border:1px solid #30363d; background:#161b22; color:#fff; }
+    .search-box button { background:#d63384; border:none; color:#fff; padding:8px 14px; border-radius:6px; cursor:pointer; }
+    section { margin-top:25px; }
+    .grid { margin-top:15px; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:16px; }
+    .card { background:#161b22; border-radius:8px; padding:14px; border:1px solid #30363d; display:flex; flex-direction:column; gap:8px; }
+    .card:hover { transform:translateY(-4px); transition:.2s; }
+    .grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;}
+    .card {background: black; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: transform .3s;}
+    .card:hover {transform: scale(1.03);}
+    .card img {width: 100%; height: 180px; object-fit: cover;}
+
+    .title { font-weight:bold; font-size:15px; }
+    .meta { font-size:12px; color:#aaa; }
+    .link { margin-top:auto; font-size:13px; color:#d63384; text-decoration:none; }
+    .link:hover { text-decoration:underline; }
+    #lastUpdated { font-size:12px; color:#888; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎬 Movie Updates</h1>
+    <nav>
+       <div class="card">
+        <img src="file:///C:/Users/CRSMS/Music/COMRADE%20WEBSITE/movie%20poster.jpg.jpg" alt="Movie">
+      <button class="active" data-cat="Nollywood">Nollywood</button>
+    <div class="card">
+        <img src="" alt="Movie">
+        <div class="content"><h3>Hollywood & Beyond</h3><p>Stream trailers & reviews of international releases.</p></div>
+      </div>
+      <button data-cat="Hollywood">Hollywood</button>
+      <div class="card">
+        <img src="file:///C:/Users/CRSMS/Music/COMRADE%20WEBSITE/movie%20poster.jpg.jpg" alt="Movie">
+      <button data-cat="Bollywood">Bollywood</button>
+      <div class="card">
+        <img src="file:///C:/Users/CRSMS/Music/COMRADE%20WEBSITE/movie%20poster.jpg.jpg" alt="Movie">
+    </nav>
+
+    <!-- 🔍 Search bar -->
+    <div class="search-box">
+      <input id="searchInput" type="text" placeholder="Search movie updates (e.g. new releases, actors)...">
+      <button onclick="searchNews()">Search</button>
+    </div>
+  </header>
+
+  <!-- 🔥 Trending Movies Section -->
+  <section>
+    <h2>🔥 Trending Movies</h2>
+    <div id="lastUpdated">Last updated: ...</div>
+    <div id="trending" class="grid"></div>
+  </section>
+
+  <!-- Movies News Section -->
+  <section>
+    <h2 id="categoryTitle">Nollywood</h2>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <script>
+    const grid = document.getElementById("grid");
+    const trendingGrid = document.getElementById("trending");
+    const searchInput = document.getElementById("searchInput");
+    const categoryTitle = document.getElementById("categoryTitle");
+    const lastUpdated = document.getElementById("lastUpdated");
+
+    const NEWS_API_KEY = ""; // Optional: Insert your NewsAPI key
+
+    const queries = {
+      "Nollywood": "Nollywood movies OR Nigeria film",
+      "Hollywood": "Hollywood movies OR USA film",
+      "Bollywood": "Bollywood movies OR India film"
+    };
+
+    async function loadNews(query, container) {
+      container.innerHTML = "<p>Loading updates...</p>";
+      try {
+        let articles = [];
+
+        if (NEWS_API_KEY) {
+          const apiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&apiKey=${NEWS_API_KEY}`;
+          const res = await fetch(apiUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.articles?.length) {
+              articles = data.articles.slice(0, 12).map(a => ({
+                title: a.title,
+                link: a.url,
+                date: new Date(a.publishedAt).toLocaleDateString()
+              }));
+            }
+          }
+        }
+
+        if (!articles.length) {
+          const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en&gl=NG&ceid=NG:en`;
+          const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
+          const res = await fetch(proxy);
+          const data = await res.json();
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(data.contents, "text/xml");
+
+          const items = xml.querySelectorAll("item");
+          articles = Array.from(items).slice(0, 12).map(item => ({
+            title: item.querySelector("title")?.textContent || "No title",
+            link: item.querySelector("link")?.textContent || "#",
+            date: new Date(item.querySelector("pubDate")?.textContent).toLocaleDateString()
+          }));
+        }
+
+        container.innerHTML = "";
+        if (!articles.length) {
+          container.innerHTML = `<p>No updates found for "${query}".</p>`;
+          return;
+        }
+
+        articles.forEach(news => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <div class="title">${news.title}</div>
+            <div class="meta">${news.date}</div>
+            <a class="link" href="${news.link}" target="_blank">Read more →</a>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (e) {
+        console.error(e);
+        container.innerHTML = `<p>Error loading news.</p>`;
+      }
+    }
+
+    document.querySelectorAll("nav button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        categoryTitle.textContent = btn.dataset.cat;
+        loadNews(queries[btn.dataset.cat], grid);
+      });
+    });
+
+    function searchNews() {
+      const term = searchInput.value.trim();
+      if (term) {
+        document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+        categoryTitle.textContent = `Search: ${term}`;
+        loadNews(term + " movies OR film", grid);
+      }
+    }
+
+    searchInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") searchNews();
+    });
+
+    function loadTrending() {
+      loadNews("Nollywood OR Hollywood OR Bollywood trending movies", trendingGrid);
+      const now = new Date();
+      lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+    }
+
+    loadNews("Nollywood movies", grid);
+    loadTrending();
+
+    setInterval(loadTrending, 300000); // refresh every 5 min
+  </script>
+</body>
+</html>
